@@ -22,6 +22,25 @@ export type TaskListItem = {
   version: number
 }
 
+export type TaskDetail = TaskListItem & {
+  vehicleId?: string | null
+  description?: string | null
+  requirements?: Record<string, unknown> | null
+  assignedAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  blockedAt?: string | null
+  cancelledAt?: string | null
+}
+
+export type PageResponse<T> = {
+  items: T[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
 export type TaskProgressSummary = {
   total: number
   completed: number
