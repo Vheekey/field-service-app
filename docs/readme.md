@@ -22,24 +22,25 @@ Implemented backend foundations:
 - Role-based API authorization for admin, dispatcher, and field worker workflows.
 - Task lifecycle APIs for create, list, detail, update, assign, unassign, start, complete, block, comments, and audit events.
 - Worker task and route endpoints backed by assigned task ordering.
+- Shift APIs for starting, ending, and reading the authenticated worker's current active shift.
 - Global API error shape and validation handling.
-- Unit/controller tests for auth, security conversion, and task application behavior.
+- Unit/controller tests for auth, security conversion, task application behavior, and shift application behavior.
 
 Implemented frontend foundations:
 
 - Vue 3, Vue Router, Pinia, and TanStack Vue Query.
 - Login flow with stored access token and refresh-cookie support.
 - Worker task list screen with progress summary, task cards, current shift display, and offline/connectivity state.
-- API clients for auth, tasks, and shifts.
+- API clients for auth, tasks, and current-shift reads.
 - Mock task and shift data for fallback/frontend development paths.
 
 Known incomplete or placeholder areas:
 
-- Shift endpoints currently return `501 Not Implemented`.
 - Vehicle endpoints currently return `501 Not Implemented`.
 - Sync endpoints currently return `501 Not Implemented`.
 - Realtime publishing package exists as a foundation, but end-to-end WebSocket/SSE delivery is not complete.
 - Idempotency headers are required on some task commands, but full replay persistence is still part of the sync/outbox work.
+- The frontend reads the real current-shift endpoint only when `VITE_USE_MOCK_API=false`; shift start/end UI actions are not wired yet.
 - There is no checked-in Docker Compose file yet, so local PostgreSQL/PostGIS must be provided separately.
 
 ## Backend
@@ -140,6 +141,12 @@ The frontend API client defaults to `/api/v1`. For a Vite dev server talking dir
 export VITE_API_BASE_URL='http://localhost:8080/api/v1'
 ```
 
+The worker task and shift queries use mock data by default for frontend-only development. To call the Spring API instead, set:
+
+```sh
+export VITE_USE_MOCK_API='false'
+```
+
 ### Build and Typecheck
 
 From `frontend/`:
@@ -207,12 +214,17 @@ GET  /workers/{workerId}/route
 POST /workers/me/location
 ```
 
-Placeholder endpoints:
+Implemented shift endpoints:
 
 ```text
 POST  /shifts/start
 POST  /shifts/{shiftId}/end
 GET   /shifts/current
+```
+
+Placeholder endpoints:
+
+```text
 GET   /vehicles/{vehicleId}
 PATCH /vehicles/{vehicleId}
 GET   /sync?since={eventId}
@@ -252,7 +264,7 @@ specs/review/sprints.md
 Recommended next implementation steps:
 
 1. Add a local Docker Compose file for PostgreSQL/PostGIS.
-2. Complete shift application service and connect the frontend current-shift query to the real API.
+2. Add frontend controls and API helpers for starting and ending shifts.
 3. Finish durable sync/outbox replay with idempotency records.
 4. Wire realtime publish-after-commit events to WebSocket or SSE subscribers.
 5. Add integration tests around Flyway migrations, repository queries, and authorization boundaries.
