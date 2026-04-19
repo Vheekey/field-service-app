@@ -19,6 +19,8 @@ import com.example.fieldservice.identity.domain.UserAccount;
 import com.example.fieldservice.identity.domain.UserStatus;
 import com.example.fieldservice.identity.persistence.UserAccountRepository;
 import com.example.fieldservice.tasks.api.TaskDto.AssignTaskRequest;
+import com.example.fieldservice.tasks.api.TaskDto.BlockTaskRequest;
+import com.example.fieldservice.tasks.api.TaskDto.CompleteTaskRequest;
 import com.example.fieldservice.tasks.api.TaskDto.UpdateTaskRequest;
 import com.example.fieldservice.tasks.domain.Task;
 import com.example.fieldservice.tasks.domain.TaskPriority;
@@ -170,6 +172,49 @@ class TaskApplicationServiceTest {
         assertThat(event.getValue().type()).isEqualTo(TaskEventType.TASK_STARTED);
         assertThat(event.getValue().task()).isSameAs(task);
         assertThat(event.getValue().actor()).isSameAs(worker);
+    }
+
+    @Test
+    void workerCompletesInProgressTaskAndEmitsEvent() {
+        UserAccount dispatcher = user("dispatcher@example.com", Role.DISPATCHER);
+        UserAccount worker = user("worker@example.com", Role.FIELD_WORKER);
+        Task task = task(dispatcher);
+        task.assignTo(worker, Instant.parse("2026-04-19T08:00:00Z"));
+        task.start(Instant.parse("2026-04-19T08:05:00Z"));
+
+        when(users.findById(worker.id())).thenReturn(Optional.of(worker));
+        when(tasks.findWithLockById(task.id())).thenReturn(Optional.of(task));
+
+        var response = service.complete(principal(worker), task.id(), new CompleteTaskRequest("Done"));
+
+        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(task.completedAt()).isNotNull();
+
+        verify(tasks).saveAndFlush(task);
+        ArgumentCaptor<TaskEvent> event = ArgumentCaptor.forClass(TaskEvent.class);
+        verify(events).save(event.capture());
+        assertThat(event.getValue().type()).isEqualTo(TaskEventType.TASK_COMPLETED);
+    }
+
+    @Test
+    void workerCanSkipAssignedTaskByBlockingItWithReason() {
+        UserAccount dispatcher = user("dispatcher@example.com", Role.DISPATCHER);
+        UserAccount worker = user("worker@example.com", Role.FIELD_WORKER);
+        Task task = task(dispatcher);
+        task.assignTo(worker, Instant.parse("2026-04-19T08:00:00Z"));
+
+        when(users.findById(worker.id())).thenReturn(Optional.of(worker));
+        when(tasks.findWithLockById(task.id())).thenReturn(Optional.of(task));
+
+        var response = service.block(principal(worker), task.id(), new BlockTaskRequest("Skipped by worker"));
+
+        assertThat(response.status()).isEqualTo("BLOCKED");
+        assertThat(task.blockedAt()).isNotNull();
+
+        verify(tasks).saveAndFlush(task);
+        ArgumentCaptor<TaskEvent> event = ArgumentCaptor.forClass(TaskEvent.class);
+        verify(events).save(event.capture());
+        assertThat(event.getValue().type()).isEqualTo(TaskEventType.TASK_BLOCKED);
     }
 
     @Test

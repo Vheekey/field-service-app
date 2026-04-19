@@ -48,6 +48,6 @@ public class WorkersController {
         return ResponseEntity.noContent().build();
     }
 
-    public record LocationPingRequest(@NotNull GeoPointDto location, Integer accuracyM) {
+    public record LocationPingRequest(@Valid @NotNull GeoPointDto location, Integer accuracyM) {
     }
 }

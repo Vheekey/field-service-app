@@ -38,4 +38,41 @@ public class Shift extends UuidEntity {
 
     protected Shift() {
     }
+
+    public Shift(UserAccount worker, Instant startedAt, Point startLocation) {
+        this.worker = worker;
+        this.status = ShiftStatus.ACTIVE;
+        this.startedAt = startedAt;
+        this.startLocation = startLocation;
+    }
+
+    public UserAccount worker() {
+        return worker;
+    }
+
+    public ShiftStatus status() {
+        return status;
+    }
+
+    public Instant startedAt() {
+        return startedAt;
+    }
+
+    public Instant endedAt() {
+        return endedAt;
+    }
+
+    public Point startLocation() {
+        return startLocation;
+    }
+
+    public Point endLocation() {
+        return endLocation;
+    }
+
+    public void end(Instant endedAt, Point endLocation) {
+        this.status = ShiftStatus.ENDED;
+        this.endedAt = endedAt;
+        this.endLocation = endLocation;
+    }
 }
