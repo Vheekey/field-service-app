@@ -60,7 +60,7 @@ public class AuthController {
 
     @GetMapping("/me")
     ResponseEntity<MeResponse> me(Authentication authentication) {
-        return ResponseEntity.ok(authService.me(authService.requireUser(authentication)));
+        return ResponseEntity.ok(authService.me(authentication));
     }
 
     private ResponseCookie refreshCookie(String value, Duration maxAge) {

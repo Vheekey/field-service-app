@@ -16,6 +16,8 @@ import com.example.fieldservice.identity.domain.UserAccount;
 import com.example.fieldservice.identity.domain.UserStatus;
 import com.example.fieldservice.identity.persistence.RefreshTokenRepository;
 import com.example.fieldservice.identity.persistence.UserAccountRepository;
+import com.example.fieldservice.workers.domain.WorkerProfile;
+import com.example.fieldservice.workers.persistence.WorkerProfileRepository;
 import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,6 +56,9 @@ class AuthServiceTest {
     @Mock
     private TokenHashingService tokenHashingService;
 
+    @Mock
+    private WorkerProfileRepository workerProfiles;
+
     private AuthService authService;
 
     @BeforeEach
@@ -65,6 +70,7 @@ class AuthServiceTest {
                 jwtTokenService,
                 refreshTokenGenerator,
                 tokenHashingService,
+                workerProfiles,
                 securityProperties()
         );
     }
@@ -191,7 +197,7 @@ class AuthServiceTest {
     @Test
     void requireUserReturnsOnlyAuthenticatedActiveUser() {
         UserAccount activeUser = user("admin@example.com", UserStatus.ACTIVE, Role.ADMIN);
-        when(users.findByEmail("admin@example.com")).thenReturn(Optional.of(activeUser));
+        when(users.findWithRolesByEmail("admin@example.com")).thenReturn(Optional.of(activeUser));
 
         var authentication = UsernamePasswordAuthenticationToken.authenticated("admin@example.com", "ignored", List.of());
 
@@ -199,6 +205,26 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.requireUser(null))
                 .isInstanceOf(BadCredentialsException.class);
+    }
+
+    @Test
+    void meReturnsWorkerProfileForFieldWorker() {
+        UserAccount worker = user("worker@example.com", UserStatus.ACTIVE, Role.FIELD_WORKER);
+        WorkerProfile profile = workerProfile(worker);
+
+        when(users.findWithRolesByEmail("worker@example.com")).thenReturn(Optional.of(worker));
+        when(workerProfiles.findByUserId(worker.id())).thenReturn(Optional.of(profile));
+
+        var authentication = UsernamePasswordAuthenticationToken.authenticated("worker@example.com", "ignored", List.of());
+
+        var response = authService.me(authentication);
+
+        assertThat(response.email()).isEqualTo("worker@example.com");
+        assertThat(response.roles()).containsExactly("FIELD_WORKER");
+        assertThat(response.workerProfile()).isNotNull();
+        assertThat(response.workerProfile().id()).isEqualTo(profile.id());
+        assertThat(response.workerProfile().userId()).isEqualTo(worker.id());
+        assertThat(response.workerProfile().active()).isTrue();
     }
 
     private static SecurityProperties securityProperties() {
@@ -225,6 +251,20 @@ class AuthServiceTest {
             return user;
         } catch (ReflectiveOperationException ex) {
             throw new IllegalStateException("Could not create test user", ex);
+        }
+    }
+
+    private static WorkerProfile workerProfile(UserAccount user) {
+        try {
+            Constructor<WorkerProfile> constructor = WorkerProfile.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            WorkerProfile profile = constructor.newInstance();
+            ReflectionTestUtils.setField(profile, "user", user);
+            ReflectionTestUtils.setField(profile, "active", true);
+            ReflectionTestUtils.setField(profile, "homeBaseName", "Default depot");
+            return profile;
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Could not create test worker profile", ex);
         }
     }
 }

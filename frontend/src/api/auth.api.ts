@@ -4,6 +4,7 @@ import type { AuthTokenResponse, CurrentUser, LoginRequest } from '@/types/auth'
 export function login(request: LoginRequest) {
   return apiRequest<AuthTokenResponse>('/auth/login', {
     method: 'POST',
+    skipAuth: true,
     body: JSON.stringify(request),
   })
 }

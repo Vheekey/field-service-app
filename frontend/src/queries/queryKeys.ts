@@ -6,6 +6,7 @@ export const queryKeys = {
   tasks: {
     all: ['tasks'] as const,
     assigned: (workerId: string) => [...queryKeys.tasks.all, 'assigned', workerId] as const,
+    list: (scope: string) => [...queryKeys.tasks.all, 'list', scope] as const,
     route: (workerId: string) => [...queryKeys.tasks.all, 'route', workerId] as const,
   },
 }

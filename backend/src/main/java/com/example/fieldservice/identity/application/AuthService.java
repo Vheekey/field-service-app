@@ -5,9 +5,12 @@ import com.example.fieldservice.identity.api.IdentityDto.AuthTokenResponse;
 import com.example.fieldservice.identity.api.IdentityDto.LoginRequest;
 import com.example.fieldservice.identity.api.IdentityDto.MeResponse;
 import com.example.fieldservice.identity.domain.RefreshToken;
+import com.example.fieldservice.identity.domain.Role;
 import com.example.fieldservice.identity.domain.UserAccount;
 import com.example.fieldservice.identity.persistence.RefreshTokenRepository;
 import com.example.fieldservice.identity.persistence.UserAccountRepository;
+import com.example.fieldservice.workers.api.WorkerProfileDto;
+import com.example.fieldservice.workers.persistence.WorkerProfileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,6 +29,7 @@ public class AuthService {
     private final JwtTokenService jwtTokenService;
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final TokenHashingService tokenHashingService;
+    private final WorkerProfileRepository workerProfiles;
     private final SecurityProperties properties;
     private final Clock clock = Clock.systemUTC();
 
@@ -36,6 +40,7 @@ public class AuthService {
             JwtTokenService jwtTokenService,
             RefreshTokenGenerator refreshTokenGenerator,
             TokenHashingService tokenHashingService,
+            WorkerProfileRepository workerProfiles,
             SecurityProperties properties
     ) {
         this.authenticationManager = authenticationManager;
@@ -44,6 +49,7 @@ public class AuthService {
         this.jwtTokenService = jwtTokenService;
         this.refreshTokenGenerator = refreshTokenGenerator;
         this.tokenHashingService = tokenHashingService;
+        this.workerProfiles = workerProfiles;
         this.properties = properties;
     }
 
@@ -92,13 +98,16 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public MeResponse me(UserAccount user) {
+    public MeResponse me(Authentication authentication) {
+        UserAccount user = requireUser(authentication);
+        var roles = user.roles().stream().map(Enum::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
+
         return new MeResponse(
                 user.id(),
                 user.email(),
                 user.name(),
-                user.roles().stream().map(Enum::name).collect(java.util.stream.Collectors.toUnmodifiableSet()),
-                null
+                roles,
+                workerProfileFor(user)
         );
     }
 
@@ -108,9 +117,33 @@ public class AuthService {
             throw new BadCredentialsException("Authentication required");
         }
 
-        return users.findByEmail(authentication.getName())
+        return users.findWithRolesByEmail(authentication.getName())
                 .filter(UserAccount::isActive)
                 .orElseThrow(() -> new BadCredentialsException("Authentication required"));
+    }
+
+    private WorkerProfileDto workerProfileFor(UserAccount user) {
+        if (!user.roles().contains(Role.FIELD_WORKER)) {
+            return null;
+        }
+
+        return workerProfiles.findByUserId(user.id())
+                .map(profile -> new WorkerProfileDto(
+                        profile.id(),
+                        profile.user().id(),
+                        profile.active(),
+                        profile.homeBaseName(),
+                        null,
+                        profile.lastSeenAt()
+                ))
+                .orElseGet(() -> new WorkerProfileDto(
+                        user.id(),
+                        user.id(),
+                        true,
+                        null,
+                        null,
+                        null
+                ));
     }
 
     private LoginResult issueSession(UserAccount user) {

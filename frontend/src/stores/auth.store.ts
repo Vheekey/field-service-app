@@ -40,7 +40,9 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.accessToken && state.expiresAt && !isExpired(state.expiresAt)),
-    workerId: (state) => state.user?.workerProfile?.id ?? null,
+    isFieldWorker: (state) => Boolean(state.user?.roles.includes('FIELD_WORKER')),
+    canViewAllTasks: (state) => Boolean(state.user?.roles.some((role) => role === 'ADMIN' || role === 'DISPATCHER')),
+    workerId: (state) => state.user?.id ?? null,
   },
   actions: {
     persist() {

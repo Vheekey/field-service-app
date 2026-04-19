@@ -110,7 +110,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(properties.cors().allowedOrigins());
+        configuration.setAllowedOriginPatterns(properties.cors().allowedOrigins());
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "Idempotency-Key", "If-Match"));
         configuration.setExposedHeaders(java.util.List.of("ETag", "X-Request-Id"));
