@@ -1,0 +1,1025 @@
+openapi: 3.1.0
+info:
+  title: Field Service API
+  version: 0.1.0
+  description: REST API for the field-service modular monolith.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Tasks
+  - name: Shifts
+  - name: Workers
+  - name: Vehicles
+  - name: Sync
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Access token issued.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      responses:
+        '200':
+          description: Refresh token rotated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      responses:
+        '204':
+          description: Refresh token revoked.
+        default:
+          $ref: '#/components/responses/Error'
+  /me:
+    get:
+      tags: [Auth]
+      operationId: getMe
+      responses:
+        '200':
+          description: Current user and optional worker profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks:
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      tags: [Tasks]
+      operationId: listTasks
+      parameters:
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/AssigneeId'
+        - $ref: '#/components/parameters/Priority'
+        - $ref: '#/components/parameters/TaskType'
+        - name: dueBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: bbox
+          in: query
+          description: west,south,east,north viewport bounds.
+          schema:
+            type: string
+            example: 18.01,59.29,18.15,59.36
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: Paged task list DTOs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListPage'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      responses:
+        '200':
+          description: Task detail.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [Tasks]
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/assign:
+    post:
+      tags: [Tasks]
+      operationId: assignTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTaskRequest'
+      responses:
+        '200':
+          description: Task assigned atomically.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/unassign:
+    post:
+      tags: [Tasks]
+      operationId: unassignTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnassignTaskRequest'
+      responses:
+        '200':
+          description: Task unassigned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/start:
+    post:
+      tags: [Tasks]
+      operationId: startTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Task started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/complete:
+    post:
+      tags: [Tasks]
+      operationId: completeTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/block:
+    post:
+      tags: [Tasks]
+      operationId: blockTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockTaskRequest'
+      responses:
+        '200':
+          description: Task blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetailResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/comments:
+    post:
+      tags: [Tasks]
+      operationId: addTaskComment
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentRequest'
+      responses:
+        '201':
+          description: Comment added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCommentResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /tasks/{taskId}/events:
+    get:
+      tags: [Tasks]
+      operationId: listTaskEvents
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Immutable task event stream.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventEnvelope'
+        default:
+          $ref: '#/components/responses/Error'
+  /shifts/start:
+    post:
+      tags: [Shifts]
+      operationId: startShift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartShiftRequest'
+      responses:
+        '200':
+          description: Active shift.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /shifts/{shiftId}/end:
+    post:
+      tags: [Shifts]
+      operationId: endShift
+      parameters:
+        - name: shiftId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndShiftRequest'
+      responses:
+        '200':
+          description: Ended shift.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /shifts/current:
+    get:
+      tags: [Shifts]
+      operationId: getCurrentShift
+      responses:
+        '200':
+          description: Current active shift summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /workers/{workerId}/tasks:
+    get:
+      tags: [Workers]
+      operationId: listWorkerTasks
+      parameters:
+        - name: workerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tasks visible to the worker.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItemResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /workers/{workerId}/route:
+    get:
+      tags: [Workers]
+      operationId: getWorkerRoute
+      parameters:
+        - name: workerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Suggested route order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskListItemResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /workers/me/location:
+    post:
+      tags: [Workers]
+      operationId: recordWorkerLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationPingRequest'
+      responses:
+        '204':
+          description: Location accepted.
+        default:
+          $ref: '#/components/responses/Error'
+  /vehicles/{vehicleId}:
+    parameters:
+      - name: vehicleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Vehicles]
+      operationId: getVehicle
+      responses:
+        '200':
+          description: Vehicle detail.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [Vehicles]
+      operationId: updateVehicle
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVehicleRequest'
+      responses:
+        '200':
+          description: Vehicle updated.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /sync:
+    get:
+      tags: [Sync]
+      operationId: syncEvents
+      parameters:
+        - name: since
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+      responses:
+        '200':
+          description: Durable events after the supplied event id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /sync/outbox:
+    post:
+      tags: [Sync]
+      operationId: replayOutbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutboxReplayRequest'
+      responses:
+        '200':
+          description: Per-command replay results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxReplayResponse'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    ETag:
+      description: Current resource version.
+      schema:
+        type: string
+    RequestId:
+      description: Request correlation id.
+      schema:
+        type: string
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: integer
+        format: int64
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Status:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/TaskStatus'
+    AssigneeId:
+      name: assigneeId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    Priority:
+      name: priority
+      in: query
+      schema:
+        $ref: '#/components/schemas/TaskPriority'
+    TaskType:
+      name: type
+      in: query
+      schema:
+        $ref: '#/components/schemas/TaskType'
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    Sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        default: dueAt,asc
+  responses:
+    Error:
+      description: Error response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Conflict:
+      description: Resource conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthTokenResponse:
+      type: object
+      required: [accessToken, expiresAt]
+      properties:
+        accessToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    MeResponse:
+      type: object
+      required: [id, email, name, roles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [ADMIN, DISPATCHER, FIELD_WORKER]
+        workerProfile:
+          $ref: '#/components/schemas/WorkerProfile'
+    WorkerProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+        homeBaseName:
+          type: string
+        lastKnownLocation:
+          $ref: '#/components/schemas/GeoPoint'
+        lastSeenAt:
+          type: string
+          format: date-time
+    GeoPoint:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+    TaskType:
+      type: string
+      enum: [BATTERY_SWAP, REBALANCE, REPAIR, INSPECTION, OTHER]
+    TaskStatus:
+      type: string
+      enum: [OPEN, ASSIGNED, IN_PROGRESS, BLOCKED, COMPLETED, CANCELLED]
+    TaskPriority:
+      type: string
+      enum: [LOW, NORMAL, HIGH, URGENT]
+    CreateTaskRequest:
+      type: object
+      required: [type, priority, title, location]
+      properties:
+        vehicleId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/TaskType'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        title:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: object
+          additionalProperties: true
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        address:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+    UpdateTaskRequest:
+      type: object
+      properties:
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        title:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: object
+          additionalProperties: true
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        address:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+    TaskListItemResponse:
+      type: object
+      required: [id, type, status, priority, title, location, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/TaskType'
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        title:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        address:
+          type: string
+        dueAt:
+          type: string
+          format: date-time
+        assigneeId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+    TaskDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/TaskListItemResponse'
+        - type: object
+          properties:
+            vehicleId:
+              type: string
+              format: uuid
+            description:
+              type: string
+            requirements:
+              type: object
+              additionalProperties: true
+            assignedAt:
+              type: string
+              format: date-time
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type: string
+              format: date-time
+            blockedAt:
+              type: string
+              format: date-time
+            cancelledAt:
+              type: string
+              format: date-time
+    TaskListPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskListItemResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    AssignTaskRequest:
+      type: object
+      required: [workerId]
+      properties:
+        workerId:
+          type: string
+          format: uuid
+    UnassignTaskRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    CompleteTaskRequest:
+      type: object
+      properties:
+        completionNotes:
+          type: string
+    BlockTaskRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+    AddCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+    TaskCommentResponse:
+      type: object
+      required: [id, authorId, body, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ShiftResponse:
+      type: object
+      required: [id, workerId, status, startedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workerId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ACTIVE, ENDED]
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+    StartShiftRequest:
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+    EndShiftRequest:
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+    LocationPingRequest:
+      type: object
+      required: [location]
+      properties:
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        accuracyM:
+          type: integer
+          minimum: 0
+    VehicleResponse:
+      type: object
+      required: [id, externalCode, vehicleType, status, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalCode:
+          type: string
+        vehicleType:
+          type: string
+          enum: [BIKE, SCOOTER, VAN, OTHER]
+        status:
+          type: string
+          enum: [AVAILABLE, IN_USE, NEEDS_SERVICE, OFFLINE]
+        batteryLevel:
+          type: integer
+          minimum: 0
+          maximum: 100
+        lastKnownLocation:
+          $ref: '#/components/schemas/GeoPoint'
+        lastSeenAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+    UpdateVehicleRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [AVAILABLE, IN_USE, NEEDS_SERVICE, OFFLINE]
+        batteryLevel:
+          type: integer
+          minimum: 0
+          maximum: 100
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+    EventEnvelope:
+      type: object
+      required: [eventId, type, entityType, entityId, version, occurredAt, payload]
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        type:
+          type: string
+        entityType:
+          type: string
+          enum: [TASK]
+        entityId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+    SyncResponse:
+      type: object
+      required: [serverTime, latestEventId, events]
+      properties:
+        serverTime:
+          type: string
+          format: date-time
+        latestEventId:
+          type: integer
+          format: int64
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventEnvelope'
+    OutboxReplayRequest:
+      type: object
+      required: [commands]
+      properties:
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfflineCommand'
+    OfflineCommand:
+      type: object
+      required: [clientMutationId, idempotencyKey, type, createdAt, payload]
+      properties:
+        clientMutationId:
+          type: string
+        idempotencyKey:
+          type: string
+          format: uuid
+        type:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+    OutboxReplayResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxResult'
+    OutboxResult:
+      type: object
+      required: [clientMutationId, status]
+      properties:
+        clientMutationId:
+          type: string
+        status:
+          type: string
+          enum: [APPLIED, DUPLICATE, REJECTED, CONFLICT]
+        serverEventId:
+          type: integer
+          format: int64
+    ApiErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+            details:
+              type: object
+              additionalProperties: true

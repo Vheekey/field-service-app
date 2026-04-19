@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: field-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/field_service
+    username: field_service
+    password: field_service
+  flyway:
+    enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+server:
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+app:
+  api:
+    base-path: /api/v1
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+  security:
+    jwt:
+      issuer: field-service
+      secret: ${APP_SECURITY_JWT_SECRET:dev-only-change-me-dev-only-change-me}
+      access-token-ttl: 15m
+    refresh-token:
+      ttl: 30d
+      cookie-name: refresh_token
+      secure-cookie: false
