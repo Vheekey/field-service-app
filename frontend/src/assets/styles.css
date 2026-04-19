@@ -38,6 +38,71 @@ select {
   padding: 24px 0;
 }
 
+.account-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #c9d8d3;
+}
+
+.account-strip strong {
+  display: block;
+  color: #12343b;
+  line-height: 1.2;
+}
+
+.login-view {
+  display: grid;
+  gap: 22px;
+  min-height: 100vh;
+  align-content: center;
+  padding: 24px 0;
+}
+
+.login-view h1 {
+  margin: 4px 0 8px;
+  color: #12343b;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.login-copy {
+  max-width: 34rem;
+  margin: 0;
+  color: #526763;
+}
+
+.login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 6px;
+  color: #23413d;
+  font-weight: 700;
+}
+
+.login-form input {
+  min-height: 46px;
+  width: 100%;
+  border: 1px solid #bacbc5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #1a1f1f;
+}
+
+.login-error {
+  margin: 0;
+  color: #7f2d2d;
+  font-weight: 700;
+}
+
 .shift-header {
   display: flex;
   align-items: flex-start;
