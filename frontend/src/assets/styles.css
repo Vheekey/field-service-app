@@ -197,6 +197,35 @@ select {
   padding-bottom: 24px;
 }
 
+.task-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.task-toolbar__sort {
+  display: flex;
+  gap: 8px;
+}
+
+.task-alert {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d9c26f;
+  border-radius: 8px;
+  background: #fff7d6;
+  color: #4d4217;
+  font-weight: 700;
+}
+
+.task-alert--error {
+  border-color: #e2a5a5;
+  background: #fde7e7;
+  color: #7f2d2d;
+}
+
 .task-card {
   display: grid;
   gap: 12px;
@@ -219,6 +248,11 @@ select {
 
 .task-card--blocked {
   border-left-color: #a23b3b;
+}
+
+.task-card--selected {
+  border-color: #12343b;
+  box-shadow: 0 12px 28px rgba(18, 52, 59, 0.16);
 }
 
 .task-card__topline,
@@ -259,6 +293,23 @@ select {
   flex: 0 0 auto;
 }
 
+.task-card__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
+}
+
+.task-card__hint {
+  margin: -2px 0 0;
+  color: #6d817d;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.task-action {
+  min-height: 44px;
+}
+
 .priority-badge {
   display: inline-flex;
   align-items: center;
@@ -291,6 +342,10 @@ select {
   font-weight: 700;
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+}
+
 @media (min-width: 520px) {
   .app-shell {
     padding: 24px;
@@ -316,5 +371,15 @@ select {
 
   .task-card__details {
     display: grid;
+  }
+
+  .task-toolbar {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .task-toolbar__sort {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }

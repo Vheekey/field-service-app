@@ -3,6 +3,8 @@ package com.example.fieldservice.common.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -33,5 +35,17 @@ public abstract class UuidEntity {
 
     public Instant updatedAt() {
         return updatedAt;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

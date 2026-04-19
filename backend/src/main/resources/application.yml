@@ -33,7 +33,8 @@ app:
     base-path: /api/v1
   cors:
     allowed-origins:
-      - http://localhost:5173
+      - http://localhost:[5173,5174,5175]
+      - http://127.0.0.1:[5173,5174,5175]
   security:
     jwt:
       issuer: field-service
