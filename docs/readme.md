@@ -11,6 +11,161 @@ specs/     Architecture, API contract, data model, and sprint references
 docs/      Implementation-facing documentation
 ```
 
+## How to Set Up Locally
+
+Use these steps to get a fresh checkout running for local development.
+
+### 1. Install prerequisites
+
+- Java 21
+- Maven 3.9+
+- Node.js 20+
+- npm
+- PostgreSQL 15+ with PostGIS available
+
+The backend expects PostgreSQL on `localhost:5432` by default. Choose one database setup option.
+
+### 2. Set up the database with Docker
+
+If you do not have PostGIS installed locally, you can run a disposable database with Docker:
+
+```sh
+docker run --name field-service-postgis \
+  -e POSTGRES_DB=field_service \
+  -e POSTGRES_USER=field_service \
+  -e POSTGRES_PASSWORD=field_service \
+  -p 5432:5432 \
+  postgis/postgis:16-3.4
+```
+
+To restart that database later:
+
+```sh
+docker start field-service-postgis
+```
+
+### 3. Set up the database without Docker
+
+Use this path if you already run PostgreSQL locally or want a native install.
+
+Install PostgreSQL and PostGIS:
+
+```sh
+brew install postgresql@16 postgis
+brew services start postgresql@16
+```
+
+If your shell cannot find the PostgreSQL commands after installation, add PostgreSQL to your path:
+
+```sh
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+```
+
+On Intel Macs, the Homebrew path may be:
+
+```sh
+export PATH="/usr/local/opt/postgresql@16/bin:$PATH"
+```
+
+Create the local database user and database:
+
+```sh
+createuser field_service --pwprompt
+createdb field_service --owner field_service
+```
+
+Use `field_service` as the password unless you plan to override the Spring datasource settings.
+
+The first backend start runs Flyway migrations, including `pgcrypto` and `postgis` extension setup. If the `field_service` user cannot create extensions, connect as a PostgreSQL superuser and enable them first:
+
+```sh
+psql -d field_service -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
+psql -d field_service -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+```
+
+Check that the app user can connect:
+
+```sh
+psql 'postgresql://field_service:field_service@localhost:5432/field_service' -c 'select current_database();'
+```
+
+### 4. Configure local environment
+
+Set a local JWT signing secret before starting the backend:
+
+```sh
+export APP_SECURITY_JWT_SECRET='replace-with-a-long-local-secret'
+```
+
+If your database connection differs from the defaults in `backend/src/main/resources/application.yml`, override it with Spring environment variables:
+
+```sh
+export SPRING_DATASOURCE_URL='jdbc:postgresql://localhost:5432/field_service'
+export SPRING_DATASOURCE_USERNAME='field_service'
+export SPRING_DATASOURCE_PASSWORD='field_service'
+```
+
+### 5. Start the backend
+
+From the backend directory:
+
+```sh
+cd backend
+mvn spring-boot:run
+```
+
+The API starts at `http://localhost:8080`. Check it with:
+
+```sh
+curl http://localhost:8080/actuator/health
+```
+
+### 6. Start the frontend
+
+In a second terminal, install dependencies and start Vite:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend starts at `http://localhost:5173` and proxies `/api` requests to the backend through `frontend/vite.config.ts`.
+
+For frontend-only work, the app uses mock task and shift data by default. To call the Spring API instead, start Vite with:
+
+```sh
+VITE_USE_MOCK_API=false npm run dev
+```
+
+### 7. Log in
+
+Use the seeded worker account:
+
+```text
+Email:    worker@example.com
+Password: Password123!
+```
+
+Other seeded accounts are listed in the Seed Users section below.
+
+### 8. Run verification checks
+
+Backend tests:
+
+```sh
+cd backend
+mvn test
+```
+
+Frontend typecheck and production build:
+
+```sh
+cd frontend
+npm run typecheck
+npm run build
+```
+
 ## Current Implementation Scope
 
 Implemented backend foundations:
